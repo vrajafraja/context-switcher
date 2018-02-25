@@ -1,10 +1,14 @@
 ## Features
 
-Enables to store already opened tabs under unique identifier. Stored tabs can be loaded based on identifier. You have also option to delete stored tabs.
+Enables to store already opened editors under unique identifier. Stored editors can be loaded based on identifier. You have also option to delete stored editors.
 
 ## Release Notes
 
 ### 0.0.5
+
+#### Contexts storage file settings
+   *  <strong>context-switcher.file-name:</strong> Specifies the name of file which contains stored contexts.
+   *  <strong>context-switcher.storage-path:</strong> Specifies the folder path where to store saved contexts.
 
 #### Added basic features:
    * <strong>Save context:</strong> (`Cmd+Shift+P` on OSX or `Ctrl+Shift+P` on Windows and Linux), type <strong>Save context as</strong><br>You will be prompted to enter name;

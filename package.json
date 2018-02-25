@@ -1,7 +1,7 @@
 {
     "name": "context-switcher",
     "displayName": "Context Switcher",
-    "description": "Store opened tabs under identifier and load previously stored.",
+    "description": "Store opened editors under identifier and load previously stored.",
     "version": "0.0.5",
     "publisher": "lukasvrajik",
     "engines": {
@@ -17,6 +17,22 @@
     ],
     "main": "./extension",
     "contributes": {
+        "configuration": {
+            "type": "object",
+            "title": "Context switcher configuration",
+            "properties": {
+                "context-switcher.storage-path": {
+                    "type": ["string", "null"],
+                    "default": null,
+                    "description": "Specifies the folder path where to store saved contexts."
+                },
+                "context-switcher.file-name": {
+                    "type": ["string", "null"],
+                    "default": "context-switcher-contexts",
+                    "description": "Specifies the name of file which contains stored contexts."
+                }
+            }
+        },
         "commands": [
             {
                 "command": "extension.saveContext",
