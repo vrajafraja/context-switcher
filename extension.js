@@ -3,20 +3,26 @@ const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path')
 const homedir = require('os').homedir();
+const CONTEXTS_STATUS_BAR_ITEM_ICON = "$(file-submodule) ";
 
 let contexts = null;
-let openedDocuments = {};
+let openedEditors = {};
 let contextNameToStore = null;
+let contextsStatusBarItem = null;
 
 function activate(context) {
 
     context.subscriptions.push(vscode.commands.registerCommand('extension.saveContext', () => saveContext()));
     context.subscriptions.push(vscode.commands.registerCommand('extension.loadContext', () => loadContext()));
+    context.subscriptions.push(vscode.commands.registerCommand('extension.updateContext', () => updateContext()));
     context.subscriptions.push(vscode.commands.registerCommand('extension.deleteContext', () => deleteContext()));
     context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(() => {
         if (contextNameToStore)
             nextEditor();
     }));
+    contextsStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+    contextsStatusBarItem.tooltip = "Currently loaded context";
+    contextsStatusBarItem.show();
 }
 
 function saveContext() {
@@ -24,7 +30,7 @@ function saveContext() {
         prompt: "Context name: ",
         placeHolder: "(ticket number, feature etc.)"
     };
-    
+
     vscode.window.showInputBox(options).then(contextName => {
         contextNameToStore = contextName.trim();
         if (!contextNameToStore) {
@@ -32,38 +38,55 @@ function saveContext() {
             return;
         }
         storeOpenedDocuments();
+        updateContextsStatusBarItem(contextNameToStore);
     });
 }
 
 function loadContext() {
     wakeUpContexts();
-    let contextNames = Object.keys(contexts);
+    let contextNames = Object.keys(contexts).filter((key) => key != 'fileName');
     vscode.window.showQuickPick(contextNames).then(contextName => {
         let editorsToOpen = contexts[contextName];
         if (editorsToOpen) {
-            closeAllEditors();
-            editorsToOpen.map(tab => {
-                vscode.workspace.openTextDocument(tab).then(document => {
-                    vscode.window.showTextDocument(document).then(() => {}, () => {});
+            closeAllEditors().then(() => {
+                editorsToOpen.map(tab => {
+                    vscode.workspace.openTextDocument(tab).then(document => {
+                        vscode.window.showTextDocument(document, vscode.ViewColumn.One, true).then(() => { }, () => { });
+                    });
                 });
+                updateContextsStatusBarItem(contextName);
             });
         }
     });
 }
 
 function closeAllEditors() {
-    vscode.commands.executeCommand('workbench.action.closeAllEditors');
+    return vscode.commands.executeCommand('workbench.action.closeAllEditors');
+}
+
+function updateContextsStatusBarItem(contextName) {
+    contextsStatusBarItem.text = !!contextName ? CONTEXTS_STATUS_BAR_ITEM_ICON + contextName : "";
+}
+
+function updateContext() {
+    if (!!contextsStatusBarItem.text) {
+        contextNameToStore = contextsStatusBarItem.text.substr(CONTEXTS_STATUS_BAR_ITEM_ICON.length);
+        storeOpenedDocuments();
+    } else {
+        saveContext();
+    }
 }
 
 function deleteContext() {
     wakeUpContexts();
-    let items = Object.keys(contexts);
-    vscode.window.showQuickPick(items).then(contextName => {
+    let contextNames = Object.keys(contexts).filter((key) => key != 'fileName');
+    vscode.window.showQuickPick(contextNames).then(contextName => {
         if (contextName) {
             vscode.window.showQuickPick(['Yes', 'No']).then(answer => {
                 if (answer === 'Yes') {
                     delete contexts[contextName];
                     storeToFile();
+                    updateContextsStatusBarItem();
                 }
             })
         }
@@ -71,55 +94,60 @@ function deleteContext() {
 }
 
 function storeOpenedDocuments() {
-    openedDocuments = {};
+    openedEditors = {};
     nextEditor();
 }
 
-function nextEditor (){
+function nextEditor() {
     let editor = vscode.window.activeTextEditor;
     if (!editor) {
         vscode.window.setStatusBarMessage('Nothing to store!', 2000);
         return;
     }
     let openEditor = vscode.window.activeTextEditor.document.fileName;
-    if (openedDocuments[openEditor] === undefined) {
-        openedDocuments[openEditor] = 'checked';
+    if (openedEditors[openEditor] === undefined) {
+        openedEditors[openEditor] = 'checked';
         vscode.commands.executeCommand('workbench.action.nextEditor');
-        if (Object.keys(openedDocuments).length == 1) {
+        if (Object.keys(openedEditors).length == 1) {
             updateContexts();
         }
     } else {
         updateContexts();
         contextNameToStore = null;
-        openedDocuments = null;
+        openedEditors = null;
     }
 }
 
 function updateContexts() {
     wakeUpContexts();
-    let openedEditors = vscode.workspace.textDocuments.filter(item => !item.isUntitled).map(item => item.fileName);
-    contexts[contextNameToStore] = openedEditors;
+    let openedTextDocuments = vscode.workspace.textDocuments.filter(item => !item.isUntitled).map(item => item.fileName);
+    let openedDocuments = Object.keys(openedEditors).filter(item => openedTextDocuments.includes(item));
+    contexts[contextNameToStore] = openedDocuments;
     storeToFile();
 }
 
 function wakeUpContexts() {
-    if(!contexts) {
+    let contextsFileNameHasChanged = (contexts && (contexts.fileName != _getContextsName()));
+    let firstStart = !contexts;
+    let contextsIsEmpty = !(contexts && Object.keys(contexts).length >= 0);
+    if (firstStart || contextsFileNameHasChanged || contextsIsEmpty) {
         let file;
         try {
             let filePath = getFilePath();
             file = fs.readFileSync(filePath);
+            contexts = JSON.parse(file);
         } catch (err) {
             contexts = {};
-            return;
         }
-        contexts = JSON.parse(file);
+        if (contexts.fileName === undefined) {
+            contexts.fileName = _getContextsName();
+        }
     }
 }
 
 function getFilePath() {
-    let configuration = vscode.workspace.getConfiguration('context-switcher');
-    let contextsFileName = configuration["file-name"] || "context-switcher-contexts";
-    let contextsFilePath = configuration["storage-path"] || homedir;
+    let contextsFileName = _getContextsName();
+    let contextsFilePath = _getContextsFilePath();
 
     let filePath = path.normalize(contextsFilePath + '/' + contextsFileName + '.json');
     return filePath;
@@ -127,12 +155,27 @@ function getFilePath() {
 
 function storeToFile() {
     let filePath = getFilePath();
+    contexts.fileName = _getContextsName();
     fs.writeFile(filePath, JSON.stringify(contexts), function (err) {
         if (err) {
             vscode.window.setStatusBarMessage('Contexts were not stored, error: ' + err, 30000);
         }
         vscode.window.setStatusBarMessage('Contexts file sucessfully updated!', 2000);
-      });
+    });
+}
+
+function _getContextsConfiguration() {
+    return vscode.workspace.getConfiguration('context-switcher');
+}
+
+function _getContextsName() {
+    let configuration = _getContextsConfiguration();
+    return configuration["file-name"] || "context-switcher-contexts";
+}
+
+function _getContextsFilePath() {
+    let configuration = _getContextsConfiguration();
+    return configuration["storage-path"] || homedir;
 }
 
 exports.activate = activate;

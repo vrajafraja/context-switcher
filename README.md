@@ -4,6 +4,10 @@ Enables to store already opened editors under unique identifier. Stored editors 
 
 ## Release Notes
 
+### 0.0.6
+   * added ability to change contexts file without need of reload vscode
+   * <strong>Update context:</strong> (`Cmd+Shift+P` on OSX or `Ctrl+Shift+P` on Windows and Linux), type <strong>Update context</strong><br>Your currently loaded context will be updated.
+
 ### 0.0.5
 
 #### Contexts storage file settings
@@ -22,6 +26,9 @@ Enables to store already opened editors under unique identifier. Stored editors 
 
 ### Load context
 ![Load context](images/load.gif)
+
+### Update context
+![Update context](images/update.gif)
 
 ### Delete context
 ![Delete context](images/delete.gif)
