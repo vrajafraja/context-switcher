@@ -44,6 +44,11 @@ function saveContext() {
 
 function loadContext() {
     wakeUpContexts();
+    const options = {
+        preserveFocus: true,
+        preview: true,
+        viewColumn: vscode.ViewColumn.One
+    }
     let contextNames = Object.keys(contexts).filter((key) => key != 'fileName');
     vscode.window.showQuickPick(contextNames).then(contextName => {
         let editorsToOpen = contexts[contextName];
@@ -51,7 +56,7 @@ function loadContext() {
             closeAllEditors().then(() => {
                 editorsToOpen.map(tab => {
                     vscode.workspace.openTextDocument(tab).then(document => {
-                        vscode.window.showTextDocument(document, vscode.ViewColumn.One, true).then(() => { }, () => { });
+                        vscode.window.showTextDocument(document, options).then(() => { }, () => { });
                     });
                 });
                 updateContextsStatusBarItem(contextName);
