@@ -4,6 +4,9 @@ Enables to store already opened editors under unique identifier. Stored editors 
 
 ## Release Notes
 
+### 0.1.0
+   * fixed issue when stored editors were opened in preview mode which lead to show only last opened editor. (only with preview mode turned on)
+
 ### 0.0.6
    * added ability to change contexts file without need of reload vscode
    * <strong>Update context:</strong> (`Cmd+Shift+P` on OSX or `Ctrl+Shift+P` on Windows and Linux), type <strong>Update context</strong><br>Your currently loaded context will be updated.

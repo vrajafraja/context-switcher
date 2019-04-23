@@ -2,7 +2,7 @@
     "name": "context-switcher",
     "displayName": "Context Switcher",
     "description": "Store opened editors under identifier and load previously stored.",
-    "version": "0.0.6",
+    "version": "0.1.0",
     "publisher": "lukasvrajik",
     "engines": {
         "vscode": "^1.20.0"
