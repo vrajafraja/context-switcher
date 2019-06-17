@@ -46,7 +46,7 @@ function loadContext() {
     wakeUpContexts();
     const options = {
         preserveFocus: true,
-        preview: true,
+        preview: false,
         viewColumn: vscode.ViewColumn.One
     }
     let contextNames = Object.keys(contexts).filter((key) => key != 'fileName');
