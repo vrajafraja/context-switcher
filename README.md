@@ -4,10 +4,13 @@ Enables to store already opened editors under unique identifier. Stored editors 
 
 ## Release Notes
 
-### 0.1.0
+### 0.1.2 Added feature to open files changed in last commit
+   * <strong>Load context from Git:</strong> (`Cmd+Shift+P` on OSX or `Ctrl+Shift+P` on Windows and Linux), type <strong>Load context from Git</strong><br>You will see list of all you repositories.
+
+### 0.1.1
    * fixed issue when stored editors were opened in preview mode which lead to show only last opened editor. (only with preview mode turned on)
 
-### 0.0.6
+### 0.0.6 Added feature to update already opened context
    * added ability to change contexts file without need of reload vscode
    * <strong>Update context:</strong> (`Cmd+Shift+P` on OSX or `Ctrl+Shift+P` on Windows and Linux), type <strong>Update context</strong><br>Your currently loaded context will be updated.
 
@@ -29,6 +32,9 @@ Enables to store already opened editors under unique identifier. Stored editors 
 
 ### Load context
 ![Load context](images/load.gif)
+
+### Load context from Git
+![Load context](images/loadContextFromGit.gif)
 
 ### Update context
 ![Update context](images/update.gif)

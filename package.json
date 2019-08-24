@@ -2,7 +2,7 @@
     "name": "context-switcher",
     "displayName": "Context Switcher",
     "description": "Store opened editors under identifier and load previously stored.",
-    "version": "0.1.0",
+    "version": "0.1.2",
     "publisher": "lukasvrajik",
     "engines": {
         "vscode": "^1.20.0"
@@ -13,6 +13,7 @@
     "activationEvents": [
         "onCommand:extension.saveContext",
         "onCommand:extension.loadContext",
+        "onCommand:extension.loadContextFromGit",
         "onCommand:extension.updateContext",
         "onCommand:extension.deleteContext"
     ],
@@ -48,6 +49,10 @@
             {
                 "command": "extension.loadContext",
                 "title": "Load context"
+            },
+            {
+                "command": "extension.loadContextFromGit",
+                "title": "Load context from Git"
             },
             {
                 "command": "extension.updateContext",

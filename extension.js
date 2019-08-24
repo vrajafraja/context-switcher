@@ -4,6 +4,8 @@ const fs = require('fs');
 const path = require('path')
 const homedir = require('os').homedir();
 const CONTEXTS_STATUS_BAR_ITEM_ICON = "$(file-submodule) ";
+const gitExtension = vscode.extensions.getExtension('vscode.git').exports;
+const gitAPI = gitExtension.getAPI(1);
 
 let contexts = null;
 let openedEditors = {};
@@ -14,6 +16,7 @@ function activate(context) {
 
     context.subscriptions.push(vscode.commands.registerCommand('extension.saveContext', () => saveContext()));
     context.subscriptions.push(vscode.commands.registerCommand('extension.loadContext', () => loadContext()));
+    context.subscriptions.push(vscode.commands.registerCommand('extension.loadContextFromGit', () => loadContextFromGit()));
     context.subscriptions.push(vscode.commands.registerCommand('extension.updateContext', () => updateContext()));
     context.subscriptions.push(vscode.commands.registerCommand('extension.deleteContext', () => deleteContext()));
     context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(() => {
@@ -44,25 +47,51 @@ function saveContext() {
 
 function loadContext() {
     wakeUpContexts();
+    const contextNames = Object.keys(contexts).filter((key) => key != 'fileName');
+    vscode.window.showQuickPick(contextNames).then(contextName => {
+        const editorsToOpen = contexts[contextName];
+        if (editorsToOpen) {
+            openEditors(contextName, editorsToOpen);
+        }
+    });
+}
+
+function openEditors(contextName, editorsToOpen) {
     const options = {
         preserveFocus: true,
         preview: false,
         viewColumn: vscode.ViewColumn.One
     }
-    let contextNames = Object.keys(contexts).filter((key) => key != 'fileName');
-    vscode.window.showQuickPick(contextNames).then(contextName => {
-        let editorsToOpen = contexts[contextName];
-        if (editorsToOpen) {
-            closeAllEditors().then(() => {
-                editorsToOpen.map(tab => {
-                    vscode.workspace.openTextDocument(tab).then(document => {
-                        vscode.window.showTextDocument(document, options).then(() => { }, () => { });
-                    });
-                });
-                updateContextsStatusBarItem(contextName);
+    closeAllEditors().then(() => {
+        editorsToOpen.map(file => {
+            vscode.workspace.openTextDocument(file).then(document => {
+                vscode.window.showTextDocument(document, options).then(() => { }, () => { });
             });
-        }
+        });
+        updateContextsStatusBarItem(contextName);
     });
+}
+
+function loadContextFromGit() {
+    wakeUpContexts();
+    const repositories = getGitRepositoriesName();
+    vscode.window.showQuickPick(repositories).then(repositoryName => {
+        const repository = getGitRepositoryByName(repositoryName);
+        repository.getCommit(repository.state.HEAD.commit).then(commit => {
+            repository.diffWith(commit.parents[0]).then(change => {
+                const changedFiles = change.map(file => file.uri.path);
+                openEditors(repositoryName, changedFiles);
+            });
+        });
+    });
+}
+
+function getGitRepositoriesName() {
+    return gitAPI.repositories.map(repository => repository.rootUri.path.split('/').pop());
+}
+
+function getGitRepositoryByName (name) {
+    return gitAPI.repositories.filter(repository => repository.rootUri.path.split('/').pop() === name)[0];
 }
 
 function closeAllEditors() {
