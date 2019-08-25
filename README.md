@@ -4,8 +4,8 @@ Enables to store already opened editors under unique identifier. Stored editors 
 
 ## Release Notes
 
-### 0.1.2 Added feature to open files changed in last commit
-   * <strong>Load context from Git:</strong> (`Cmd+Shift+P` on OSX or `Ctrl+Shift+P` on Windows and Linux), type <strong>Load context from Git</strong><br>You will see list of all you repositories.
+### 0.1.3 Added feature to open files changed in last commit
+   * <strong>Load context from Git:</strong> (`Cmd+Shift+P` on OSX or `Ctrl+Shift+P` on Windows and Linux), type <strong>Load context from Git</strong><br>You will see list of all your repositories.
 
 ### 0.1.1
    * fixed issue when stored editors were opened in preview mode which lead to show only last opened editor. (only with preview mode turned on)
