@@ -70,14 +70,14 @@
     },
     "devDependencies": {
         "@types/mocha": "^2.2.42",
-        "@types/node": "^7.0.61",
+        "@types/node": "^7.10.7",
         "eslint": "^4.19.1",
-        "typescript": "^2.8.3",
-        "vscode": "^1.1.16"
+        "typescript": "^2.9.2",
+        "vscode": "^1.1.36"
     },
     "dependencies": {
-        "hoek": "^5.0.3",
-        "vsce": "^1.39.0"
+        "@hapi/hoek": "^8.2.1",
+        "vsce": "^1.66.0"
     },
     "repository": {
         "type": "git",
