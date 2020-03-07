@@ -82,12 +82,14 @@ function openEditors({ contextName, editorsToOpen, migration } = { migration: fa
                 vscode.workspace.openTextDocument(fileUrl).then(document => {
                     vscode.window.showTextDocument(document, options).then(() => { }, () => { });
                 }).catch(err => {
+                    vscode.window.showErrorMessage(`Can't open file: ${fileUrl}`);
                     console.log(`Error while opening file: ${fileUrl} ${err}`);
                 });
             } else {
                 vscode.workspace.openTextDocument(path.normalize(`${rootDirectory}${fileUrl}`)).then(document => {
                     vscode.window.showTextDocument(document, options).then(() => { }, () => { });
                 }).catch(err => {
+                    vscode.window.showErrorMessage(`Can't open file: ${fileUrl}`, { modal: true });
                     console.log(`Error while opening file: ${fileUrl} ${err}`);
                 });
             }

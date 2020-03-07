@@ -2,8 +2,9 @@
     "name": "context-switcher",
     "displayName": "Context Switcher",
     "description": "Store opened editors under identifier and load previously stored.",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "publisher": "lukasvrajik",
+    "license": "MIT",
     "engines": {
         "vscode": "^1.20.0"
     },
@@ -76,13 +77,13 @@
     "devDependencies": {
         "@types/mocha": "^2.2.42",
         "@types/node": "^7.10.7",
-        "eslint": "^4.19.1",
+        "eslint": "^6.8.0",
         "typescript": "^2.9.2",
         "vscode": "^1.1.36"
     },
     "dependencies": {
         "@hapi/hoek": "^8.2.1",
-        "vsce": "^1.66.0"
+        "vsce": "^1.74.0"
     },
     "repository": {
         "type": "git",
