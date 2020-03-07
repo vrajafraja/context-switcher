@@ -1,11 +1,12 @@
-
 const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path')
 const homedir = require('os').homedir();
+const rootDirectory = vscode.workspace.workspaceFolders;
 const CONTEXTS_STATUS_BAR_ITEM_ICON = "$(file-submodule) ";
 const gitExtension = vscode.extensions.getExtension('vscode.git').exports;
 const gitAPI = gitExtension.getAPI(1);
+const contextMeta = ['fileName'];
 
 let contexts = null;
 let openedEditors = {};
@@ -14,6 +15,7 @@ let contextsStatusBarItem = null;
 
 function activate(context) {
 
+    context.subscriptions.push(vscode.commands.registerCommand('extension.loadContextFromLegacyStorage', () => loadContextFromLegacyStorage()));
     context.subscriptions.push(vscode.commands.registerCommand('extension.saveContext', () => saveContext()));
     context.subscriptions.push(vscode.commands.registerCommand('extension.loadContext', () => loadContext()));
     context.subscriptions.push(vscode.commands.registerCommand('extension.loadContextFromGit', () => loadContextFromGit()));
@@ -29,7 +31,7 @@ function activate(context) {
 }
 
 function saveContext() {
-    let options = {
+    const options = {
         prompt: "Context name: ",
         placeHolder: "(ticket number, feature etc.)"
     };
@@ -47,26 +49,49 @@ function saveContext() {
 
 function loadContext() {
     wakeUpContexts();
-    const contextNames = Object.keys(contexts).filter((key) => key != 'fileName');
+    const contextNames = _getContextNames();
     vscode.window.showQuickPick(contextNames).then(contextName => {
         const editorsToOpen = contexts[contextName];
         if (editorsToOpen) {
-            openEditors(contextName, editorsToOpen);
+            openEditors({ contextName, editorsToOpen });
         }
     });
 }
 
-function openEditors(contextName, editorsToOpen) {
+function loadContextFromLegacyStorage() {
+    wakeUpContexts({ migration: true });
+    const contextNames = _getContextNames();
+    vscode.window.showQuickPick(contextNames).then(contextName => {
+        const editorsToOpen = contexts[contextName];
+        if (editorsToOpen) {
+            openEditors({ contextName, editorsToOpen, migration: true }).then(() => updateContext());
+        }
+    });
+}
+
+function openEditors({ contextName, editorsToOpen, migration } = { migration: false }) {
     const options = {
-        preserveFocus: true,
+        preserveFocus: false,
         preview: false,
         viewColumn: vscode.ViewColumn.One
     }
-    closeAllEditors().then(() => {
-        editorsToOpen.map(file => {
-            vscode.workspace.openTextDocument(file).then(document => {
-                vscode.window.showTextDocument(document, options).then(() => { }, () => { });
-            });
+    const rootDirectory = _getRootDirectory();
+    return closeAllEditors().then(() => {
+        editorsToOpen.map(fileUrl => {
+            if (migration) {
+                vscode.workspace.openTextDocument(fileUrl).then(document => {
+                    vscode.window.showTextDocument(document, options).then(() => { }, () => { });
+                }).catch(err => {
+                    console.log(`Error while opening file: ${fileUrl} ${err}`);
+                });
+            } else {
+                vscode.workspace.openTextDocument(path.normalize(`${rootDirectory}${fileUrl}`)).then(document => {
+                    vscode.window.showTextDocument(document, options).then(() => { }, () => { });
+                }).catch(err => {
+                    console.log(`Error while opening file: ${fileUrl} ${err}`);
+                });
+            }
+
         });
         updateContextsStatusBarItem(contextName);
     });
@@ -90,7 +115,7 @@ function getGitRepositoriesName() {
     return gitAPI.repositories.map(repository => repository.rootUri.path.split('/').pop());
 }
 
-function getGitRepositoryByName (name) {
+function getGitRepositoryByName(name) {
     return gitAPI.repositories.filter(repository => repository.rootUri.path.split('/').pop() === name)[0];
 }
 
@@ -113,7 +138,7 @@ function updateContext() {
 
 function deleteContext() {
     wakeUpContexts();
-    let contextNames = Object.keys(contexts).filter((key) => key != 'fileName');
+    const contextNames = _getContextNames();
     vscode.window.showQuickPick(contextNames).then(contextName => {
         if (contextName) {
             vscode.window.showQuickPick(['Yes', 'No']).then(answer => {
@@ -133,12 +158,12 @@ function storeOpenedDocuments() {
 }
 
 function nextEditor() {
-    let editor = vscode.window.activeTextEditor;
+    const editor = vscode.window.activeTextEditor;
     if (!editor) {
         vscode.window.setStatusBarMessage('Nothing to store!', 2000);
         return;
     }
-    let openEditor = vscode.window.activeTextEditor.document.fileName;
+    const openEditor = vscode.window.activeTextEditor.document.fileName;
     if (openedEditors[openEditor] === undefined) {
         openedEditors[openEditor] = 'checked';
         vscode.commands.executeCommand('workbench.action.nextEditor');
@@ -154,21 +179,20 @@ function nextEditor() {
 
 function updateContexts() {
     wakeUpContexts();
-    let openedTextDocuments = vscode.workspace.textDocuments.filter(item => !item.isUntitled).map(item => item.fileName);
-    let openedDocuments = Object.keys(openedEditors).filter(item => openedTextDocuments.includes(item));
-    contexts[contextNameToStore] = openedDocuments;
+    const openedTextDocuments = vscode.workspace.textDocuments.filter(item => !item.isUntitled).map(item => item.fileName);
+    const openedDocuments = Object.keys(openedEditors).filter(item => openedTextDocuments.includes(item));
+    const rootDirectory = _getRootDirectory();
+    contexts[contextNameToStore] = openedDocuments.map(fileUri => fileUri.replace(rootDirectory, ''));
     storeToFile();
 }
 
-function wakeUpContexts() {
-    let contextsFileNameHasChanged = (contexts && (contexts.fileName != _getContextsName()));
-    let firstStart = !contexts;
-    let contextsIsEmpty = !(contexts && Object.keys(contexts).length >= 0);
+function wakeUpContexts({ migration } = { migration: false }) {
+    const contextsFileNameHasChanged = (contexts && (contexts.fileName != _getContextsName()));
+    const firstStart = !contexts || migration;
+    const contextsIsEmpty = !(contexts && Object.keys(contexts).length >= 0);
     if (firstStart || contextsFileNameHasChanged || contextsIsEmpty) {
-        let file;
         try {
-            let filePath = getFilePath();
-            file = fs.readFileSync(filePath);
+            const file = fs.readFileSync(getFilePath(migration));
             contexts = JSON.parse(file);
         } catch (err) {
             contexts = {};
@@ -179,18 +203,17 @@ function wakeUpContexts() {
     }
 }
 
-function getFilePath() {
-    let contextsFileName = _getContextsName();
-    let contextsFilePath = _getContextsFilePath();
-
-    let filePath = path.normalize(contextsFilePath + '/' + contextsFileName + '.json');
+function getFilePath(migration) {
+    const contextsFileName = _getContextsName(migration);
+    const contextsFilePath = _getContextsFilePath(migration);
+    const filePath = path.normalize(`${contextsFilePath}/${contextsFileName}.json`);
     return filePath;
 }
 
 function storeToFile() {
-    let filePath = getFilePath();
     contexts.fileName = _getContextsName();
-    fs.writeFile(filePath, JSON.stringify(contexts), function (err) {
+    fs.mkdirSync(_getContextsFilePath(), { recursive: true });
+    fs.writeFile(getFilePath(), JSON.stringify(contexts), function (err) {
         if (err) {
             vscode.window.setStatusBarMessage('Contexts were not stored, error: ' + err, 30000);
         }
@@ -198,21 +221,35 @@ function storeToFile() {
     });
 }
 
+function _getContextNames() {
+    return Object.keys(contexts).filter((key) => !contextMeta.includes(key));
+}
+
 function _getContextsConfiguration() {
     return vscode.workspace.getConfiguration('context-switcher');
 }
 
-function _getContextsName() {
-    let configuration = _getContextsConfiguration();
-    return configuration["file-name"] || "context-switcher-contexts";
+function _getContextsName(migration) {
+    if (migration) {
+        let configuration = _getContextsConfiguration();
+        return configuration["file-name"] || "context-switcher-contexts";
+    }
+    return "context-switcher";
 }
 
-function _getContextsFilePath() {
-    let configuration = _getContextsConfiguration();
-    return configuration["storage-path"] || homedir;
+function _getContextsFilePath(migration) {
+    if (migration) {
+        const configuration = _getContextsConfiguration();
+        return configuration["storage-path"] || homedir;
+    } else return path.normalize(`${_getRootDirectory()}/.vscode/`);
+}
+
+function _getRootDirectory() {
+    if (rootDirectory && rootDirectory[0]) {
+        return `${rootDirectory[0].uri.path}`.replace(rootDirectory[0].name, '');
+    }
 }
 
 exports.activate = activate;
-function deactivate() {
-}
+function deactivate() { }
 exports.deactivate = deactivate;
