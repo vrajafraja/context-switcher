@@ -59,17 +59,17 @@ function loadContext() {
 }
 
 function loadContextFromLegacyStorage() {
-    wakeUpContexts({ migration: true });
+    wakeUpContexts({ absolutePath: true });
     const contextNames = _getContextNames();
     vscode.window.showQuickPick(contextNames).then(contextName => {
         const editorsToOpen = contexts[contextName];
         if (editorsToOpen) {
-            openEditors({ contextName, editorsToOpen, migration: true }).then(() => updateContext());
+            openEditors({ contextName, editorsToOpen, absolutePath: true }).then(() => updateContext());
         }
     });
 }
 
-function openEditors({ contextName, editorsToOpen, migration } = { migration: false }) {
+function openEditors({ contextName, editorsToOpen, absolutePath } = { absolutePath: false }) {
     const options = {
         preserveFocus: false,
         preview: false,
@@ -78,7 +78,7 @@ function openEditors({ contextName, editorsToOpen, migration } = { migration: fa
     const rootDirectory = _getRootDirectory();
     return closeAllEditors().then(() => {
         editorsToOpen.map(fileUrl => {
-            if (migration) {
+            if (absolutePath) {
                 vscode.workspace.openTextDocument(fileUrl).then(document => {
                     vscode.window.showTextDocument(document, options).then(() => { }, () => { });
                 }).catch(err => {
@@ -106,8 +106,9 @@ function loadContextFromGit() {
         const repository = getGitRepositoryByName(repositoryName);
         repository.getCommit(repository.state.HEAD.commit).then(commit => {
             repository.diffWith(commit.parents[0]).then(change => {
-                const changedFiles = change.map(file => file.uri.path);
-                openEditors(repositoryName, changedFiles);
+                debugger;
+                const editorsToOpen = change.map(file => file.uri.path);
+                openEditors({ repositoryName, editorsToOpen, absolutePath: true });
             });
         });
     });
@@ -188,13 +189,13 @@ function updateContexts() {
     storeToFile();
 }
 
-function wakeUpContexts({ migration } = { migration: false }) {
+function wakeUpContexts({ absolutePath } = { absolutePath: false }) {
     const contextsFileNameHasChanged = (contexts && (contexts.fileName != _getContextsName()));
-    const firstStart = !contexts || migration;
+    const firstStart = !contexts || absolutePath;
     const contextsIsEmpty = !(contexts && Object.keys(contexts).length >= 0);
     if (firstStart || contextsFileNameHasChanged || contextsIsEmpty) {
         try {
-            const file = fs.readFileSync(getFilePath(migration));
+            const file = fs.readFileSync(getFilePath(absolutePath));
             contexts = JSON.parse(file);
         } catch (err) {
             contexts = {};
@@ -205,9 +206,9 @@ function wakeUpContexts({ migration } = { migration: false }) {
     }
 }
 
-function getFilePath(migration) {
-    const contextsFileName = _getContextsName(migration);
-    const contextsFilePath = _getContextsFilePath(migration);
+function getFilePath(absolutePath) {
+    const contextsFileName = _getContextsName(absolutePath);
+    const contextsFilePath = _getContextsFilePath(absolutePath);
     const filePath = path.normalize(`${contextsFilePath}/${contextsFileName}.json`);
     return filePath;
 }
@@ -231,16 +232,16 @@ function _getContextsConfiguration() {
     return vscode.workspace.getConfiguration('context-switcher');
 }
 
-function _getContextsName(migration) {
-    if (migration) {
+function _getContextsName(absolutePath) {
+    if (absolutePath) {
         let configuration = _getContextsConfiguration();
         return configuration["file-name"] || "context-switcher-contexts";
     }
     return "context-switcher";
 }
 
-function _getContextsFilePath(migration) {
-    if (migration) {
+function _getContextsFilePath(absolutePath) {
+    if (absolutePath) {
         const configuration = _getContextsConfiguration();
         return configuration["storage-path"] || homedir;
     } else return path.normalize(`${_getRootDirectory()}/.vscode/`);

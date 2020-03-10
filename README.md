@@ -4,7 +4,7 @@ Enables to store already opened editors under unique identifier. Stored editors 
 
 ## Release Notes
 
-### 0.1.5 Changed contexts file name and it's storage
+### 0.1.6 Changed contexts file name and it's storage
    <strong>Contexts file is now stored in the root of your workspace in folder <code>.vscode/context-switcher</code></strong>
 
    #### Migration from legacy storage
