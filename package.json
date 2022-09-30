@@ -82,7 +82,7 @@
         "vscode": "^1.1.36"
     },
     "dependencies": {
-        "@hapi/hoek": "^8.2.1",
+        "@hapi/hoek": "^9.0.4",
         "vsce": "^1.74.0"
     },
     "repository": {
